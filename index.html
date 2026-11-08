@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docker Quiz · QoreBox</title>
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root { --navy:#04204A; --navy2:#0B3D91; --blue:#0573FF; --sky:#00AEFF; --indigo:#3F51D9; --ink:#0D1B33; --body:#33415C; --muted:#5B6880; --line:#DDE5F0; --bg:#F3F7FD; --ok:#0F9D63; --okbg:#E6F7EF; --bad:#D93A3A; --badbg:#FDECEC; --gold:#FFC94D;
+  --head:"Space Grotesk", "Inter", Arial, sans-serif; --sans:"Inter", "Segoe UI", Arial, sans-serif; --mono:"JetBrains Mono", Consolas, monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 16px/1.55 var(--sans); color: var(--ink); background: radial-gradient(900px 500px at 100% -10%, #D9E7FB, transparent 60%), var(--bg); min-height: 100vh; }
+.wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+header img { height: 28px; }
+header .sep { width: 1px; height: 26px; background: var(--line); }
+header b { font: 700 16px var(--head); color: var(--navy); }
+header small { display: block; color: var(--muted); font-size: 12.5px; }
+.card { background: #fff; border-radius: 22px; padding: 28px clamp(18px, 4vw, 36px); box-shadow: 0 16px 40px -24px #0B3D9166, 0 1px 3px #0D1B330f; }
+.hero { background: radial-gradient(120% 140% at 100% 0%, #0573FF, transparent 60%), linear-gradient(135deg, var(--navy), var(--navy2)); color: #fff; }
+h1 { font: 700 clamp(30px, 5vw, 44px)/1.08 var(--head); margin: 6px 0 10px; letter-spacing: -.02em; }
+h1 em { font-style: normal; color: var(--sky); }
+.eyebrow { font: 700 12px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: #9FD8FF; }
+.hero p { color: #C9D8F5; margin: 0 0 18px; }
+.levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0 22px; }
+.lv { border-radius: 14px; padding: 10px 12px; background: #ffffff14; border: 1px solid #ffffff26; font-size: 13px; color: #DCE7FF; }
+.lv b { display: block; font: 700 15px var(--head); color: #fff; }
+label.nm { display: block; font-weight: 600; margin-bottom: 6px; color: #DCE7FF; }
+input#name { width: 100%; font: 600 18px var(--sans); padding: 14px 16px; border-radius: 14px; border: 2px solid #ffffff33; background: #ffffff12; color: #fff; outline: 0; }
+input#name::placeholder { color: #9FB9E8; }
+input#name:focus { border-color: var(--sky); }
+.btn { font: 700 16px var(--sans); border: 0; border-radius: 14px; padding: 14px 22px; cursor: pointer; background: var(--blue); color: #fff; box-shadow: 0 10px 22px -12px #0573FF; display: inline-flex; align-items: center; gap: 8px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.btn.gold { background: var(--gold); color: var(--navy); }
+.btn.ghost { background: #fff; color: var(--navy); border: 1.5px solid var(--line); box-shadow: none; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.badge { font: 700 12px var(--sans); letter-spacing: .08em; text-transform: uppercase; padding: 6px 12px; border-radius: 99px; color: #fff; background: var(--c); }
+.qn { font: 700 14px var(--sans); color: var(--muted); }
+.score { margin-left: auto; font: 700 14px var(--sans); color: var(--navy); background: #EAF2FF; padding: 6px 12px; border-radius: 99px; }
+.bar { height: 8px; border-radius: 8px; background: var(--line); overflow: hidden; margin-bottom: 22px; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--sky)); transition: width .4s; }
+.q { font: 700 clamp(21px, 3vw, 26px)/1.3 var(--head); margin: 0 0 6px; color: var(--ink); }
+.qsub { color: var(--muted); margin: 0 0 16px; }
+pre.code { font: 500 14.5px/1.55 var(--mono); background: var(--navy); color: #DCE7FF; padding: 14px 16px; border-radius: 12px; overflow-x: auto; margin: 0 0 16px; }
+.opts { display: grid; gap: 10px; }
+.opt { text-align: left; font: 500 16.5px/1.4 var(--sans); padding: 14px 16px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; display: flex; gap: 12px; align-items: flex-start; transition: border-color .15s, background .15s; }
+.opt:hover:not(:disabled) { border-color: var(--blue); background: #F4F9FF; }
+.opt .L { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font: 700 14px var(--head); background: #EAF2FF; color: var(--navy); }
+.opt code, .why code, .rv code { font: 500 14px var(--mono); background: #EAF2FF; color: var(--navy2); padding: 1px 6px; border-radius: 5px; }
+.opt:disabled { cursor: default; }
+.opt.right { border-color: var(--ok); background: var(--okbg); }
+.opt.right .L { background: var(--ok); color: #fff; }
+.opt.wrong { border-color: var(--bad); background: var(--badbg); }
+.opt.wrong .L { background: var(--bad); color: #fff; }
+.opt.dim { opacity: .55; }
+.why { margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: #F4F9FF; border-left: 5px solid var(--ok); color: var(--body); animation: rise .3s ease-out; }
+.why.no { border-left-color: var(--bad); }
+.why b { color: var(--ink); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+.lvl-up { text-align: center; padding: 34px 20px; }
+.lvl-up .big { font: 700 64px var(--head); color: var(--c); line-height: 1; }
+.result { text-align: center; }
+.ring { width: 170px; height: 170px; margin: 6px auto 8px; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 12; }
+.ring .tr { stroke: var(--line); } .ring .vl { stroke: var(--blue); stroke-linecap: round; transition: stroke-dashoffset 1.2s ease; }
+.ring b { position: absolute; inset: 0; display: grid; place-items: center; font: 700 44px var(--head); color: var(--navy); }
+.ring b small { display: block; font: 600 14px var(--sans); color: var(--muted); margin-top: -18px; }
+.title-earned { font: 700 22px var(--head); color: var(--navy); margin: 4px 0 2px; }
+.lvrows { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0; }
+.lvr { border-radius: 14px; padding: 12px; background: #F4F9FF; border-top: 4px solid var(--c); text-align: left; }
+.lvr b { display: block; font: 700 14px var(--head); }
+.lvr span { font: 700 20px var(--head); color: var(--navy); }
+.stamp { font: 500 13px var(--sans); color: var(--muted); margin-top: 6px; }
+.review { text-align: left; margin-top: 22px; }
+.review h3 { font: 700 18px var(--head); margin: 0 0 10px; }
+.rv { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); margin-bottom: 8px; background: #fff; }
+.rv .rq { font-weight: 600; }
+.rv .ra { color: var(--ok); margin-top: 4px; }
+.rv .rx { color: var(--muted); font-size: 14px; margin-top: 2px; }
+canvas#cf { position: fixed; inset: 0; pointer-events: none; }
+footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 22px; }
+@media (max-width: 640px) { .levels, .lvrows { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<canvas id="cf"></canvas>
+<div class="wrap">
+  <header><img src="logo.png" alt="QoreBox"><span class="sep"></span><div><b>Docker Quiz</b><small>Jaiz Microservices Training</small></div></header>
+  <main id="app"></main>
+  <footer>Jaiz Microservices Training · Abubakar Bello &amp; Nasir Musa Imam · QoreBox</footer>
+</div>
+<script>
+// 20 questions, 4 levels, getting harder. k = the right option, lightly encoded so it is not visible at a glance.
+const LEVELS = [
+  { name: "Level 1 · Basics", short: "Basics", c: "#00AEFF" },
+  { name: "Level 2 · Running containers", short: "Running", c: "#0573FF" },
+  { name: "Level 3 · Building images", short: "Building", c: "#3F51D9" },
+  { name: "Level 4 · Networks & Compose", short: "Networks", c: "#0B3D91" },
+];
+const Q = [
+  // ---- Level 1: basics
+  { l: 0, q: "What is a Docker image?", o: ["A program that is running right now", "A read-only template (a recipe) used to create containers", "A virtual machine with Windows inside", "A screenshot of your desktop"], k: "OA==", w: "An image is the frozen recipe. A <b>container</b> is what runs when you start one from the image." },
+  { l: 0, q: "Which command downloads an image without running it?", o: ["<code>docker get python:3.12-slim</code>", "<code>docker download python:3.12-slim</code>", "<code>docker pull python:3.12-slim</code>", "<code>docker run python:3.12-slim</code>"], k: "OQ==", w: "<code>docker pull</code> only downloads. <code>docker run</code> downloads if needed <b>and</b> starts a container." },
+  { l: 0, q: "Which command lists the containers that are running now?", o: ["<code>docker ps</code>", "<code>docker images</code>", "<code>docker list</code>", "<code>docker show</code>"], k: "Nw==", w: "<code>docker ps</code> shows running containers. <code>docker images</code> shows the images on your laptop." },
+  { l: 0, q: "In <code>python:3.12-slim</code>, what is <code>3.12-slim</code>?", o: ["The container's name", "The registry it comes from", "The port it listens on", "The tag: which version of the image"], k: "MTA=", w: "Name <code>python</code>, tag <code>3.12-slim</code>. No tag means <code>latest</code>, which can change under your feet." },
+  { l: 0, q: "<code>docker run hello-world</code> prints <i>Hello from Docker!</i> What does that prove?", o: ["Python is installed on your laptop", "Docker can download an image and run a container on your laptop", "Your app is ready for production", "Kafka is running"], k: "OA==", w: "It is the classic first test: Docker Desktop is running and can pull and run images." },
+  // ---- Level 2: running containers
+  { l: 1, q: "What does <code>-d</code> do?", code: "docker run -d --name web -p 18080:8000 hello-py", o: ["Deletes the container when it stops", "Runs the container in the background, so you get your terminal back", "Downloads the image again", "Turns on debug mode"], k: "OA==", w: "<code>-d</code> = detached: it runs in the background and prints only the container ID." },
+  { l: 1, q: "In <code>-p 18080:8000</code>, which number is the port on <b>your laptop</b>?", o: ["8000", "18080", "Both: they must always be the same", "Neither: ports are chosen at random"], k: "OA==", w: "Laptop : container. You call <code>http://localhost:18080</code>; inside the box the app listens on 8000." },
+  { l: 1, q: "You run the same <code>docker run -d --name web ...</code> command twice. The second time you get <i>Conflict. The container name \"/web\" is already in use</i>. What is the fix?", o: ["Restart Docker Desktop", "Reinstall Python", "Remove the old container with <code>docker rm -f web</code>, or choose another name", "Use a different port"], k: "OQ==", w: "Names must be unique. The first <code>web</code> still exists, even if it is stopped." },
+  { l: 1, q: "How do you see what the app inside the <code>web</code> container printed?", o: ["<code>docker logs web</code>", "<code>docker print web</code>", "<code>docker images web</code>", "<code>cat web</code>"], k: "Nw==", w: "<code>docker logs web</code> shows everything the app printed. Add <code>-f</code> to keep following new lines." },
+  { l: 1, q: "After <code>docker stop web</code>, <code>docker ps</code> no longer shows it. Which command still does?", o: ["<code>docker images</code>", "<code>docker ps -a</code>", "<code>docker logs</code>", "Nothing: the container is gone for good"], k: "OA==", w: "A stopped container still exists. <code>-a</code> = all, running or not. Only <code>docker rm</code> removes it." },
+  // ---- Level 3: building images
+  { l: 2, q: "In this Dockerfile, which line decides what runs when a container starts?", code: "FROM python:3.12-slim\nWORKDIR /app\nCOPY app.py .\nEXPOSE 8000\nCMD [\"python\", \"app.py\"]", o: ["<code>FROM</code>", "<code>COPY</code>", "<code>EXPOSE</code>", "<code>CMD</code>"], k: "MTA=", w: "<code>CMD</code> is the start command. <code>EXPOSE</code> is only a note saying which port the app uses." },
+  { l: 2, q: "What does <code>COPY app.py .</code> do?", o: ["Copies app.py from your folder into the image, into the working directory /app", "Copies app.py from the container back to your laptop", "Downloads app.py from the internet", "Makes a backup of app.py on your laptop"], k: "Nw==", w: "The dot means <i>here</i>, which is <code>/app</code> because of <code>WORKDIR /app</code>." },
+  { l: 2, q: "You edit <b>only</b> app.py and run <code>docker build -t hello-py .</code> again. What happens?", o: ["Everything is rebuilt and Python is downloaded again", "<code>FROM</code> and <code>WORKDIR</code> come from the cache; <code>COPY app.py .</code> and the steps after it run again", "Nothing: Docker ignores small changes", "The build fails because the image already exists"], k: "OA==", w: "Docker caches every step. The first step whose input changed, and every step after it, runs again." },
+  { l: 2, q: "What is <code>-e GREETING=\"Salam from Jaiz!\"</code>?", code: "docker run -d --name web2 -p 18081:8000 -e GREETING=\"Salam from Jaiz!\" hello-py", o: ["A comment for humans", "The name of the container", "An environment variable: a setting passed into the container, which app.py reads", "An error message"], k: "OQ==", w: "Same image, different setting: <code>curl localhost:18081</code> now answers <i>Salam from Jaiz!</i>, with no rebuild." },
+  { l: 2, q: "What does <code>docker exec web python --version</code> do?", o: ["Builds a new image called python", "Runs a command inside the running <code>web</code> container", "Starts a second container", "Upgrades Python on your laptop"], k: "OA==", w: "<code>exec</code> runs an extra command in a container that is already running. It prints <i>Python 3.12.x</i>." },
+  // ---- Level 4: networks & compose
+  { l: 3, q: "<code>web</code> and a second container are on the same network, <code>jaiz-net</code>. From the second container, which address reaches the app?", o: ["<code>http://localhost:8000</code>", "<code>http://localhost:18080</code>", "<code>http://web:8000</code>", "<code>http://web:18080</code>"], k: "OQ==", w: "On a Docker network, containers find each other <b>by name</b>, on the <b>container</b> port. 18080 only exists on your laptop." },
+  { l: 3, q: "Inside the second container, <code>http://localhost:8000</code> gives <i>Connection refused</i>. Why?", o: ["The web app crashed", "Inside a container, <code>localhost</code> means that container itself, and nothing listens on 8000 there", "Port 8000 is blocked by Windows", "You must use HTTPS"], k: "OA==", w: "This is the big trap: <code>localhost</code> is always <i>this box</i>. To reach another container, use its name." },
+  { l: 3, q: "<code>docker compose up -d --build</code> answers <i>no configuration file provided: not found</i>. What is wrong?", o: ["Docker Desktop is not running", "The image is missing", "The port is already in use", "You are not in the folder that contains <code>docker-compose.yml</code>"], k: "MTA=", w: "Compose looks for <code>docker-compose.yml</code> in the current folder. <code>cd ~/hello-docker</code> first." },
+  { l: 3, q: "In the compose file, <code>checker</code> has <code>depends_on: - web</code>. What does that guarantee?", o: ["That <code>web</code> is fully ready to answer before <code>checker</code> starts", "Only the start order: <code>web</code> is started before <code>checker</code>, but it may not be ready yet", "That both containers use the same image", "That <code>checker</code> restarts when <code>web</code> crashes"], k: "OA==", w: "Start order only. That is why our checker waits 3 seconds before calling <code>http://web:8000</code>." },
+  { l: 3, q: "After <code>docker compose stop</code>, <code>web</code> shows <i>Exited (137)</i> after about 10 seconds. What happened?", o: ["The app crashed with a bug", "Docker ran out of disk space", "Docker asked the app to stop, waited 10 seconds because it did not react, then stopped it forcefully", "The image was deleted"], k: "OQ==", w: "Docker first sends a polite stop signal. Our tiny app ignores it, so after 10 s Docker forces it (code 137). Not a crash." },
+];
+const KEY = "qorebox.dockerquiz.v1";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const right = q => +atob(q.k) - 7;
+let S = load() || { name: "", i: 0, picks: [], started: null, finished: null };
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { } }
+function load() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
+// each participant gets the answer options in their own random order
+function shuffleAll() { return Q.map(q => { const a = q.o.map((_, i) => i); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }); }
+const ord = i => (S.order && S.order[i]) || Q[i].o.map((_, k) => k);
+const correctCount = (lv) => S.picks.reduce((n, p, i) => n + ((lv === undefined || Q[i].l === lv) && p === right(Q[i]) ? 1 : 0), 0);
+
+function start() {
+  $("#app").innerHTML = `
+  <section class="card hero">
+    <div class="eyebrow">Docker Essentials · test yourself</div>
+    <h1>The <em>Docker</em> quiz</h1>
+    <p>20 questions in 4 levels. It starts easy and gets harder. Pick one answer per question; you see straight away if you were right, and why.</p>
+    <div class="levels">${LEVELS.map((l, i) => `<div class="lv" style="border-top:4px solid ${l.c}"><b>Level ${i + 1}</b>${l.short} · 5 questions</div>`).join("")}</div>
+    <label class="nm" for="name">Your name (shown on your result)</label>
+    <input id="name" maxlength="40" placeholder="e.g. Aisha Bello" value="${esc(S.name || "")}" autocomplete="name">
+    <div class="row"><button class="btn gold" id="go" ${S.name ? "" : "disabled"}>Start the quiz →</button></div>
+  </section>`;
+  const inp = $("#name"), go = $("#go");
+  inp.oninput = () => { go.disabled = !inp.value.trim(); };
+  inp.onkeydown = e => { if (e.key === "Enter" && inp.value.trim()) go.click(); };
+  go.onclick = () => { S = { name: inp.value.trim(), i: 0, picks: [], started: Date.now(), finished: null, order: shuffleAll() }; save(); question(); };
+  inp.focus();
+}
+
+function question() {
+  if (S.i >= Q.length) return result();
+  const q = Q[S.i], L = LEVELS[q.l], answered = S.picks[S.i] !== undefined;
+  $("#app").innerHTML = `
+  <section class="card">
+    <div class="top"><span class="badge" style="--c:${L.c}">${L.name}</span><span class="qn">Question ${S.i + 1} of ${Q.length}</span><span class="score">${correctCount()} correct</span></div>
+    <div class="bar"><i style="width:${(S.i / Q.length) * 100}%"></i></div>
+    <p class="q">${q.q}</p>
+    ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : `<p class="qsub">Choose one answer.</p>`}
+    <div class="opts">${ord(S.i).map((k, pos) => `<button class="opt" data-k="${k}"><span class="L">${"ABCD"[pos]}</span><span>${q.o[k]}</span></button>`).join("")}</div>
+    <div id="fb"></div>
+    <div class="row" id="nav" hidden><button class="btn" id="next">${S.i + 1 === Q.length ? "See my result" : "Next question →"}</button></div>
+  </section>`;
+  document.querySelectorAll(".opt").forEach(b => b.onclick = () => pick(+b.dataset.k));
+  if (answered) show(S.picks[S.i]);
+}
+function pick(k) { if (S.picks[S.i] !== undefined) return; S.picks[S.i] = k; save(); show(k); }
+function show(k) {
+  const q = Q[S.i], r = right(q), ok = k === r;
+  document.querySelectorAll(".opt").forEach(b => { const i = +b.dataset.k; b.disabled = true; b.classList.add(i === r ? "right" : i === k ? "wrong" : "dim"); });
+  $("#fb").innerHTML = `<div class="why ${ok ? "" : "no"}"><b>${ok ? "Correct!" : "Not quite."}</b> ${q.w}</div>`;
+  $("#nav").hidden = false;
+  document.querySelector(".score").textContent = `${correctCount()} correct`;
+  $("#next").onclick = next; $("#next").focus();
+}
+function next() {
+  const was = Q[S.i].l; S.i++; save();
+  if (S.i < Q.length && Q[S.i].l !== was) return levelUp(Q[S.i].l);
+  question();
+}
+function levelUp(l) {
+  const L = LEVELS[l], prev = correctCount(l - 1);
+  $("#app").innerHTML = `<section class="card lvl-up" style="--c:${L.c}">
+    <div class="eyebrow" style="color:${L.c}">Level ${l} done: ${prev} of 5 right</div>
+    <div class="big">Level ${l + 1}</div>
+    <p class="q" style="margin-top:10px">${L.short}</p>
+    <p class="qsub">${["", "Now you run containers yourself.", "Now you build your own images.", "The hardest level: networks and Compose."][l]}</p>
+    <div class="row" style="justify-content:center"><button class="btn" id="go">Let's go →</button></div></section>`;
+  $("#go").onclick = question; $("#go").focus();
+}
+function result() {
+  if (!S.finished) { S.finished = Date.now(); save(); }
+  const n = correctCount(), pct = n / Q.length, C = 2 * Math.PI * 70;
+  const title = n === 20 ? "Docker Master" : n >= 17 ? "Container Captain" : n >= 13 ? "Image Builder" : n >= 9 ? "Container Explorer" : "Docker Beginner";
+  const mins = Math.max(1, Math.round((S.finished - S.started) / 60000));
+  const wrong = Q.map((q, i) => ({ q, i })).filter(({ q, i }) => S.picks[i] !== right(q));
+  $("#app").innerHTML = `<section class="card result">
+    <div class="eyebrow" style="color:var(--blue)">Well done, ${esc(S.name)}</div>
+    <div class="ring"><svg viewBox="0 0 160 160"><circle class="tr" cx="80" cy="80" r="70"/><circle class="vl" id="rv" cx="80" cy="80" r="70" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg><b>${n}<small>out of 20</small></b></div>
+    <div class="title-earned">${title}</div>
+    <div class="lvrows">${LEVELS.map((L, i) => `<div class="lvr" style="--c:${L.c}"><b>Level ${i + 1} · ${L.short}</b><span>${correctCount(i)}/5</span></div>`).join("")}</div>
+    <div class="stamp">${esc(S.name)} · ${new Date(S.finished).toLocaleString()} · ${mins} min · show this screen to the trainer</div>
+    ${wrong.length ? `<div class="review"><h3>Learn from the ones you missed</h3>${wrong.map(({ q, i }) => `<div class="rv"><div class="rq">${i + 1}. ${q.q}</div><div class="ra">Right answer: ${q.o[right(q)]}</div><div class="rx">${q.w}</div></div>`).join("")}</div>` : ""}
+    <div class="row" style="justify-content:center"><button class="btn ghost" id="again">Try again</button></div>
+  </section>`;
+  setTimeout(() => { const r = $("#rv"); if (r) r.style.strokeDashoffset = C * (1 - pct); }, 80);
+  $("#again").onclick = () => { if (confirm("Start again? Your answers will be cleared.")) { S = { name: S.name, i: 0, picks: [], started: null, finished: null }; save(); start(); } };
+  if (n >= 13) confetti();
+}
+function confetti() {
+  const cv = $("#cf"), cx = cv.getContext("2d"); cv.width = innerWidth; cv.height = innerHeight;
+  const cols = ["#0573FF", "#00AEFF", "#3F51D9", "#FFC94D", "#0F9D63"];
+  const P = Array.from({ length: 160 }, () => ({ x: Math.random() * cv.width, y: -20 - Math.random() * cv.height, r: 3 + Math.random() * 5, c: cols[Math.random() * cols.length | 0], vy: 2 + Math.random() * 3, vx: -1.5 + Math.random() * 3, a: Math.random() * 6 }));
+  let t = 0; (function f() { cx.clearRect(0, 0, cv.width, cv.height);
+    P.forEach(p => { p.y += p.vy; p.x += p.vx + Math.sin((t + p.a) / 12); cx.fillStyle = p.c; cx.save(); cx.translate(p.x, p.y); cx.rotate(t / 10 + p.a); cx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); cx.restore(); });
+    if (++t < 360) requestAnimationFrame(f); else cx.clearRect(0, 0, cv.width, cv.height); })();
+}
+// resume where the participant was (a refresh never loses answers)
+if (S.finished) result(); else if (S.started) question(); else start();
+</script>
+</body>
+</html>
