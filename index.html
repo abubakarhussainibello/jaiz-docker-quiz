@@ -162,11 +162,15 @@ pre.code { font:500 14.5px/1.6 var(--mono); background:#04204A; color:#DCE7FF; p
 .rv .ra { color:var(--ok2); font-weight:600; margin-top:6px; }
 .rv .rx { color:var(--body); font-size:14px; margin-top:4px; }
 .perfect { text-align:center; color:#C9D8F5; }
+.place:empty { display:none; }
+.place { display:flex; align-items:center; justify-content:center; gap:10px; font:600 17px var(--sans); color:#DCE7FF; }
+.place svg { width:24px; height:24px; color:var(--gold); } .place b { color:var(--gold); font:800 22px var(--head); }
+a.btn2 { text-decoration:none; } .btn2 svg { width:18px; height:18px; }
 canvas#cf { position:fixed; inset:0; pointer-events:none; z-index:30; }
 footer { text-align:center; color:#8FA8D8; font-size:12.5px; margin-top:26px; }
 @media (max-width:920px) { .land { grid-template-columns:1fr; min-height:0; } .play { grid-template-columns:1fr; } .rail { position:static; } .opts { grid-template-columns:1fr; } .medals { grid-template-columns:1fr 1fr; } }
 @media print {
-  body { background:#fff !important; } body::before, body::after, .bar, .actions, .review, footer, canvas { display:none !important; }
+  body { background:#fff !important; } body::before, body::after, .bar, .actions, .place, .review, footer, canvas { display:none !important; }
   .app { padding:0; } .cert { box-shadow:none; } .cert::after { display:none; }
 }
 </style>
@@ -231,6 +235,14 @@ const ICON = {
 let S = load() || fresh("");
 function fresh(name) { return { name, i: 0, picks: [], pts: [], streak: 0, best: 0, started: null, finished: null, order: null }; }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { } }
+// ---------- shared leaderboard ----------
+const PID = (() => { const k = "qorebox.dockerquiz.pid"; let v; try { v = localStorage.getItem(k); } catch { }
+  if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12)); try { localStorage.setItem(k, v); } catch { } } return v; })();
+function sync() {
+  if (!S.name || !S.started) return Promise.resolve();
+  return fetch("/api/score", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+    body: JSON.stringify({ id: PID, name: S.name, points: points(), correct: correct(), answered: S.picks.filter(x => x !== undefined).length, best: S.best, started: S.started, finished: S.finished }) }).catch(() => { });
+}
 function load() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
 function shuffleAll() { return Q.map(q => { const a = q.o.map((_, i) => i); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }); }
 const ord = i => (S.order && S.order[i]) || Q[i].o.map((_, k) => k);
@@ -259,7 +271,7 @@ function landing() {
       <p class="lead">Twenty questions, four levels. It starts easy and gets harder. Every answer shows you why, and you finish with your own certificate.</p>
       <div class="facts"><div class="fact"><b>20</b><small>questions</small></div><div class="fact"><b>4</b><small>levels</small></div><div class="fact"><b>~10</b><small>minutes</small></div><div class="fact"><b>${maxPoints}</b><small>points to win</small></div></div>
       <div class="namebox"><input id="name" maxlength="40" placeholder="Type your full name" value="${esc(S.name || "")}" autocomplete="name"><button class="go" id="go" ${S.name ? "" : "disabled"}>Start ${ICON.arrow}</button></div>
-      <div class="hint">Your name goes on your certificate. Your progress is saved on this laptop if you refresh.</div>
+      <div class="hint">Your name goes on your certificate. Your score appears live on the class leaderboard. Your progress is saved if you refresh.</div>
     </div>
     <div>
       ${boxes}
@@ -303,7 +315,7 @@ function pick(k, e) {
   S.picks[S.i] = k;
   if (ok) { S.streak++; S.best = Math.max(S.best, S.streak); S.pts[S.i] = WORTH[q.l] + (S.streak >= 3 ? 50 : 0); }
   else { S.streak = 0; S.pts[S.i] = 0; }
-  save();
+  save(); sync();
   reveal(k, true, e);
 }
 function reveal(k, fresh, e) {
@@ -350,6 +362,7 @@ function levelUp(done) {
 function certificate() {
   chips(true);
   if (!S.finished) { S.finished = Date.now(); save(); }
+  sync().then(showPlace);
   const n = correct(), C = 2 * Math.PI * 62, pts = points();
   const rank = n === 20 ? ["Docker Master", "A perfect score."] : n >= 17 ? ["Container Captain", "You really know your containers."] : n >= 13 ? ["Image Builder", "Solid work: you can build and run."] : n >= 9 ? ["Container Explorer", "Good start: review the ones you missed."] : ["Docker Beginner", "Everyone starts here: try again after a review."];
   const mins = Math.max(1, Math.round((S.finished - (S.started || S.finished)) / 60000));
@@ -368,13 +381,20 @@ function certificate() {
       <div class="medals">${LEVELS.map((L, l) => { const g = correct(l); return `<div class="md">${medal(medalColor(g), l + 1, 44)}<b>${L.short}</b><small>${g} of 5</small></div>`; }).join("")}</div>
       <div class="sig"><div><b>Abubakar Bello &amp; Nasir Musa Imam</b>Trainers, QoreBox</div><div style="text-align:right"><b>${new Date(S.finished).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}</b>completed in ${mins} min</div></div>
     </article>
-    <div class="actions"><button class="btn2" id="print">${ICON.print}Print or save as PDF</button><button class="btn2" id="again">${ICON.redo}Try again</button></div>
+    <div class="place" id="place"></div>
+    <div class="actions"><a class="btn2" href="/leaderboard" target="_blank">${ICON.trophy}Leaderboard</a><button class="btn2" id="print">${ICON.print}Print or save as PDF</button><button class="btn2" id="again">${ICON.redo}Try again</button></div>
     ${missed.length ? `<section class="review"><h3>Learn from the ${missed.length} you missed</h3>${missed.map(({ q, i }) => `<div class="rv"><div class="rq">${i + 1}. ${q.q}</div><div class="ra">Right answer: ${q.o[right(q)]}</div><div class="rx">${q.w}</div></div>`).join("")}</section>` : `<p class="perfect">Perfect score. Nothing to review!</p>`}
   </section>`;
   setTimeout(() => { const r = $("#rv"); if (r) r.style.strokeDashoffset = C * (1 - n / 20); }, 120);
   $("#print").onclick = () => window.print();
   $("#again").onclick = () => { if (confirm("Start again? Your answers will be cleared.")) { S = fresh(S.name); save(); landing(); } };
   if (n >= 13) confetti();
+}
+function showPlace() {
+  fetch("/api/leaderboard", { cache: "no-store" }).then(r => r.json()).then(rows => {
+    const me = rows.find(r => r.id === PID), el = $("#place"); if (!me || !el) return;
+    el.innerHTML = `${ICON.trophy}<span>You are <b>#${me.pos}</b> of ${rows.length} on the leaderboard${me.points !== points() ? ` with ${me.points} pts (your first full attempt counts)` : ""}</span>`;
+  }).catch(() => { });
 }
 function confetti() {
   const cv = $("#cf"), cx = cv.getContext("2d"); cv.width = innerWidth; cv.height = innerHeight;

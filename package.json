@@ -1,0 +1,10 @@
+{
+  "name": "jaiz-docker-quiz",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Docker quiz with a shared class leaderboard (Jaiz Microservices Training, QoreBox)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "pg": "^8.13.1" }
+}

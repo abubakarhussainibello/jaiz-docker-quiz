@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docker Quiz Leaderboard · QoreBox</title>
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root { --deep:#020F26; --navy:#04204A; --blue:#0573FF; --sky:#00AEFF; --indigo:#3F51D9; --gold:#FFC94D; --silver:#C9D3E3; --bronze:#D99158; --ok:#12B574;
+  --head:"Plus Jakarta Sans","Inter",Arial,sans-serif; --sans:"Inter","Segoe UI",Arial,sans-serif; }
+* { box-sizing:border-box; }
+html,body { margin:0; min-height:100%; }
+body { font:16px/1.5 var(--sans); color:#fff; background:var(--deep); overflow-x:hidden; }
+body::before { content:""; position:fixed; inset:0; z-index:-2;
+  background: radial-gradient(900px 600px at 85% -10%, #0573FF55, transparent 60%), radial-gradient(800px 600px at -10% 110%, #3F51D955, transparent 60%), linear-gradient(160deg, #04204A, #020F26 70%); }
+.app { max-width:1100px; margin:0 auto; padding:18px 16px 40px; }
+.bar { display:flex; align-items:center; gap:14px; margin-bottom:26px; flex-wrap:wrap; }
+.bar img { height:26px; filter:brightness(0) invert(1); }
+.bar .sep { width:1px; height:24px; background:#ffffff2e; }
+.bar b { display:block; font:800 15px var(--head); } .bar small { color:#9FB9E8; font-size:12px; }
+.live { margin-left:auto; display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:99px; background:#ffffff10; border:1px solid #ffffff1f; font:700 13px var(--sans); color:#DCE7FF; }
+.live i { width:8px; height:8px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 4px #12B57433; animation:pulse 1.6s infinite; }
+.live.off i { background:#E5484D; box-shadow:0 0 0 4px #E5484D33; animation:none; }
+@keyframes pulse { 50% { opacity:.35; } }
+h1 { font:800 clamp(32px,5vw,56px)/1.05 var(--head); letter-spacing:-.03em; margin:0 0 6px; text-align:center; }
+h1 span { background:linear-gradient(90deg,#7CD3FF,#00AEFF 40%,#0573FF); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { text-align:center; color:#C9D8F5; margin:0 0 30px; }
+.podium { display:grid; grid-template-columns:1fr 1.15fr 1fr; gap:14px; align-items:end; margin-bottom:26px; }
+.pod { text-align:center; border-radius:22px 22px 14px 14px; padding:18px 12px 16px; background:#ffffff0d; border:1px solid #ffffff1f; position:relative; min-width:0; }
+.pod .m { width:58px; height:58px; margin:0 auto 8px; border-radius:50%; display:grid; place-items:center; font:800 26px var(--head); color:var(--navy); background:var(--c); box-shadow:0 0 0 6px #ffffff10, 0 12px 30px -10px var(--c); }
+.pod .n { font:800 clamp(16px,2.2vw,22px)/1.2 var(--head); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pod .p { font:800 clamp(22px,3vw,32px) var(--head); color:var(--c); margin-top:4px; }
+.pod small { color:#9FB9E8; }
+.pod.first { padding-top:28px; padding-bottom:30px; background:linear-gradient(180deg,#FFC94D22,#ffffff0a); border-color:#FFC94D55; }
+.pod.first .m { width:72px; height:72px; font-size:32px; }
+.pod.empty { opacity:.35; }
+.list { background:#ffffff0b; border:1px solid #ffffff1a; border-radius:22px; padding:8px; }
+.row { display:grid; grid-template-columns:52px 1fr auto auto; gap:14px; align-items:center; padding:12px 14px; border-radius:14px; transition:background .4s; }
+.row + .row { border-top:1px solid #ffffff10; }
+.row .pos { font:800 20px var(--head); color:#9FB9E8; text-align:center; }
+.row .nm { font:700 17px var(--head); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.row .st { color:#9FB9E8; font-size:13.5px; white-space:nowrap; }
+.row .pt { font:800 20px var(--head); color:var(--gold); min-width:84px; text-align:right; }
+.row.up { background:#12B57426; }
+.tag { display:inline-block; margin-left:8px; padding:2px 8px; border-radius:99px; font:700 11px var(--sans); letter-spacing:.06em; text-transform:uppercase; vertical-align:middle; }
+.tag.play { background:#00AEFF26; color:#7CD3FF; } .tag.done { background:#12B57426; color:#7FE0B5; }
+.none { text-align:center; color:#9FB9E8; padding:40px 10px; }
+.admin { text-align:center; margin-top:18px; }
+.admin button { border:1px solid #E5484D66; background:#E5484D1a; color:#FFB3B5; border-radius:12px; padding:10px 16px; font:700 14px var(--sans); cursor:pointer; }
+footer { text-align:center; color:#8FA8D8; font-size:12.5px; margin-top:26px; }
+@media (max-width:640px) { .podium { grid-template-columns:1fr; } .pod.first { order:-1; } .row { grid-template-columns:36px 1fr auto; } .row .st { display:none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar"><img src="logo.png" alt="QoreBox"><span class="sep"></span><div><b>Docker Quiz</b><small>Jaiz Microservices Training</small></div><span class="live" id="live"><i></i><span>Live</span></span></div>
+  <h1>Class <span>leaderboard</span></h1>
+  <p class="sub" id="sub">Waiting for players…</p>
+  <section class="podium" id="podium"></section>
+  <section class="list" id="list"></section>
+  <div class="admin" id="admin" hidden><button id="reset">Clear all scores</button></div>
+  <footer>Updates every few seconds · Jaiz Microservices Training · QoreBox</footer>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = ms => { if (!ms) return ""; const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`; };
+const status = r => r.finished ? `<span class="tag done">Done</span>` : `<span class="tag play">Q ${Math.min(20, r.answered + 1)}/20</span>`;
+let last = {};
+
+function render(rows) {
+  const done = rows.filter(r => r.finished).length;
+  $("#sub").textContent = rows.length ? `${rows.length} player${rows.length > 1 ? "s" : ""} · ${done} finished · ${rows.length - done} still playing` : "Waiting for players…";
+  const P = [rows[1], rows[0], rows[2]], C = ["var(--silver)", "var(--gold)", "var(--bronze)"], N = [2, 1, 3];
+  $("#podium").innerHTML = P.map((r, i) => r
+    ? `<div class="pod ${N[i] === 1 ? "first" : ""}" style="--c:${C[i]}"><div class="m">${N[i]}</div><div class="n">${esc(r.name)}</div><div class="p">${r.points}</div><small>${r.correct}/20 correct ${r.finished ? "· " + fmt(r.time) : "· playing"}</small></div>`
+    : `<div class="pod empty ${N[i] === 1 ? "first" : ""}" style="--c:${C[i]}"><div class="m">${N[i]}</div><div class="n">—</div></div>`).join("");
+  const rest = rows.slice(3);
+  $("#list").innerHTML = !rows.length ? `<div class="none">Open the quiz, type your name and start. You will appear here.</div>`
+    : !rest.length ? `<div class="none">Everyone is on the podium so far.</div>`
+    : rest.map(r => `<div class="row ${last[r.id] !== undefined && r.pos < last[r.id] ? "up" : ""}"><span class="pos">${r.pos}</span><span class="nm">${esc(r.name)}${status(r)}</span><span class="st">${r.correct}/20 correct${r.finished ? " · " + fmt(r.time) : ""}</span><span class="pt">${r.points}</span></div>`).join("");
+  last = Object.fromEntries(rows.map(r => [r.id, r.pos]));
+}
+function tick() {
+  fetch("/api/leaderboard", { cache: "no-store" }).then(r => r.json()).then(rows => { render(rows); $("#live").classList.remove("off"); })
+    .catch(() => $("#live").classList.add("off"));
+}
+tick(); setInterval(tick, 3000);
+
+// Trainer only: open /leaderboard?key=YOUR_ADMIN_KEY to get a "clear" button.
+const key = new URLSearchParams(location.search).get("key");
+if (key) { $("#admin").hidden = false;
+  $("#reset").onclick = () => { if (!confirm("Clear every score on the leaderboard?")) return;
+    fetch("/api/leaderboard?key=" + encodeURIComponent(key), { method: "DELETE" }).then(r => { if (!r.ok) alert("Wrong key."); tick(); }); }; }
+</script>
+</body>
+</html>
