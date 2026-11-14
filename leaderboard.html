@@ -23,7 +23,12 @@ body::before { content:""; position:fixed; inset:0; z-index:-2;
 .tabs { display:flex; gap:6px; margin-left:10px; }
 .tabs a { padding:7px 14px; border-radius:99px; font:700 13px var(--sans); color:#9FB9E8; text-decoration:none; border:1px solid #ffffff1f; }
 .tabs a.on { background:#0573FF; color:#fff; border-color:#0573FF; }
-.live { margin-left:auto; display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:99px; background:#ffffff10; border:1px solid #ffffff1f; font:700 13px var(--sans); color:#DCE7FF; }
+.fs { margin-left:auto; display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:99px; background:#ffffff10; border:1px solid #ffffff1f; font:700 13px var(--sans); color:#DCE7FF; cursor:pointer; }
+.fs:hover { background:#ffffff22; }
+.fs svg { width:15px; height:15px; }
+.fs kbd { font:700 11px var(--sans); padding:1px 6px; border-radius:5px; background:#ffffff22; }
+:fullscreen .fs span, :fullscreen .fs kbd { display:none; }
+.live { display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:99px; background:#ffffff10; border:1px solid #ffffff1f; font:700 13px var(--sans); color:#DCE7FF; }
 .live i { width:8px; height:8px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 4px #12B57433; animation:pulse 1.6s infinite; }
 .live.off i { background:#E5484D; box-shadow:0 0 0 4px #E5484D33; animation:none; }
 @keyframes pulse { 50% { opacity:.35; } }
@@ -58,13 +63,13 @@ footer { text-align:center; color:#8FA8D8; font-size:12.5px; margin-top:26px; }
 </head>
 <body>
 <div class="app">
-  <div class="bar"><img src="/logo.png" alt="QoreBox"><span class="sep"></span><div><b id="qtitle">Docker Quiz</b><small>Jaiz Microservices Training</small></div><nav class="tabs"><a href="/leaderboard?quiz=docker" data-q="docker">Docker</a><a href="/leaderboard?quiz=platform" data-q="platform">Platform</a></nav><span class="live" id="live"><i></i><span>Live</span></span></div>
+  <div class="bar"><img src="/logo.png" alt="QoreBox"><span class="sep"></span><div><b id="qtitle">Docker Quiz</b><small>Jaiz Microservices Training</small></div><nav class="tabs"><a href="/leaderboard?quiz=docker" data-q="docker">Docker</a><a href="/leaderboard?quiz=platform" data-q="platform">Platform</a></nav><button class="fs" id="fs" title="Full screen (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Full screen</span><kbd>F</kbd></button><span class="live" id="live"><i></i><span>Live</span></span></div>
   <h1>Class <span>leaderboard</span></h1>
   <p class="sub" id="sub">Waiting for players…</p>
   <section class="podium" id="podium"></section>
   <section class="list" id="list"></section>
   <div class="admin" id="admin" hidden><button id="reset">Clear all scores for this quiz</button></div>
-  <footer>Updates every few seconds · Jaiz Microservices Training · QoreBox</footer>
+  <footer>Updates every few seconds · Press F for full screen · Jaiz Microservices Training · QoreBox</footer>
 </div>
 <script>
 const $ = s => document.querySelector(s);
@@ -97,6 +102,14 @@ function tick() {
     .catch(() => $("#live").classList.add("off"));
 }
 tick(); setInterval(tick, 3000);
+
+// F (or the button) toggles full screen for the projector; Esc also leaves it.
+function toggleFs() {
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else document.documentElement.requestFullscreen?.().catch(() => { });
+}
+$("#fs").onclick = toggleFs;
+addEventListener("keydown", e => { if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey && !e.altKey && e.target.tagName !== "INPUT") { e.preventDefault(); toggleFs(); } });
 
 // Trainer only: open /leaderboard?key=YOUR_ADMIN_KEY to get a "clear" button.
 const key = params.get("key");
