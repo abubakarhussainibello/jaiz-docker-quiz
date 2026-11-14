@@ -1,10 +1,14 @@
-# Docker Quiz
+# Jaiz Quizzes
 
-Jaiz Microservices Training · QoreBox. A 20-question Docker quiz with a live class leaderboard.
+Jaiz Microservices Training · QoreBox. Two 20-question quizzes, each with its own live class leaderboard.
 
-- `/` the quiz. Each answer is sent to the server, and the certificate shows the trainee's position.
-- `/leaderboard` the projector view: podium plus full ranking, refreshes every 3 seconds.
-- `/leaderboard?key=ADMIN_KEY` the same page with a "Clear all scores" button for the trainer.
+- `/` the Docker quiz (questions in `quiz-docker.js`).
+- `/platform` the platform quiz: 10 theory + 10 practical on the Dockerfile, docker-compose.yml and kong.yml (questions in `quiz-platform.js`).
+- `/leaderboard?quiz=docker` or `/leaderboard?quiz=platform` the projector view, with tabs to switch.
+
+- Each answer is sent to the server, and the certificate shows the trainee's position.
+- The leaderboard shows a podium plus the full ranking and refreshes every 3 seconds.
+- Add `&key=ADMIN_KEY` to the leaderboard address for a "Clear all scores for this quiz" button.
 
 Ranking: points, then correct answers, then finished before still playing, then fastest time.
 Only the first full attempt counts; "Try again" does not change the leaderboard.

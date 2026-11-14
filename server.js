@@ -9,7 +9,10 @@ const ADMIN_KEY = process.env.ADMIN_KEY || "";
 const ROOT = __dirname;
 const MAX_POINTS = 5900; // 5 x (100+200+300+400) + streak bonuses
 const TYPES = { ".html": "text/html; charset=utf-8", ".png": "image/png", ".js": "text/javascript", ".css": "text/css", ".ico": "image/x-icon" };
-const PUBLIC = new Set(["/index.html", "/leaderboard.html", "/logo.png"]);
+const PUBLIC = new Set(["/index.html", "/leaderboard.html", "/logo.png", "/quiz-docker.js", "/quiz-platform.js"]);
+const QUIZZES = new Set(["docker", "platform"]);
+// The Docker quiz keeps its original row ids; other quizzes prefix theirs, so one laptop can play both.
+const rowId = (quiz, id) => quiz === "docker" ? id : `${quiz}:${id}`;
 
 // ---------- storage ----------
 let store;
@@ -18,18 +21,19 @@ if (process.env.DATABASE_URL) {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes("render.com") ? { rejectUnauthorized: false } : false });
   const ready = pool.query(`CREATE TABLE IF NOT EXISTS scores (
     id text PRIMARY KEY, name text NOT NULL, points int NOT NULL, correct int NOT NULL,
-    answered int NOT NULL, best int NOT NULL, started bigint, finished bigint, updated bigint NOT NULL)`);
+    answered int NOT NULL, best int NOT NULL, started bigint, finished bigint, updated bigint NOT NULL)`)
+    .then(() => pool.query("ALTER TABLE scores ADD COLUMN IF NOT EXISTS quiz text NOT NULL DEFAULT 'docker'"));
   store = {
     async upsert(r) {
       await ready;
       // Once an attempt is finished it is locked: the first full attempt is the one that counts.
-      await pool.query(`INSERT INTO scores (id,name,points,correct,answered,best,started,finished,updated)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      await pool.query(`INSERT INTO scores (id,name,points,correct,answered,best,started,finished,updated,quiz)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
         ON CONFLICT (id) DO UPDATE SET name=$2, points=$3, correct=$4, answered=$5, best=$6, started=$7, finished=$8, updated=$9
-        WHERE scores.finished IS NULL`, [r.id, r.name, r.points, r.correct, r.answered, r.best, r.started, r.finished, r.updated]);
+        WHERE scores.finished IS NULL`, [r.id, r.name, r.points, r.correct, r.answered, r.best, r.started, r.finished, r.updated, r.quiz]);
     },
-    async all() { await ready; return (await pool.query("SELECT * FROM scores")).rows.map(r => ({ ...r, started: r.started && +r.started, finished: r.finished && +r.finished, updated: +r.updated })); },
-    async clear() { await ready; await pool.query("DELETE FROM scores"); },
+    async all(quiz) { await ready; return (await pool.query("SELECT * FROM scores WHERE quiz = $1", [quiz])).rows.map(r => ({ ...r, started: r.started && +r.started, finished: r.finished && +r.finished, updated: +r.updated })); },
+    async clear(quiz) { await ready; await pool.query("DELETE FROM scores WHERE quiz = $1", [quiz]); },
   };
 } else {
   const FILE = path.join(ROOT, "data", "scores.json");
@@ -38,8 +42,8 @@ if (process.env.DATABASE_URL) {
   const persist = () => { fs.mkdirSync(path.dirname(FILE), { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(rows)); };
   store = {
     async upsert(r) { if (rows[r.id]?.finished) return; rows[r.id] = r; persist(); },
-    async all() { return Object.values(rows); },
-    async clear() { rows = {}; persist(); },
+    async all(quiz) { return Object.values(rows).filter(r => (r.quiz || "docker") === quiz); },
+    async clear(quiz) { for (const k of Object.keys(rows)) if ((rows[k].quiz || "docker") === quiz) delete rows[k]; persist(); },
   };
   console.log("No DATABASE_URL: scores are kept in data/scores.json");
 }
@@ -62,20 +66,24 @@ http.createServer(async (req, res) => {
   try {
     if (url.pathname === "/api/score" && req.method === "POST") {
       const b = JSON.parse(await readBody(req) || "{}");
-      const id = String(b.id || "").slice(0, 64), name = String(b.name || "").trim().slice(0, 40);
-      if (!/^[a-z0-9-]{8,64}$/i.test(id) || !name) return json(res, 400, { error: "id and name required" });
+      const id = String(b.id || "").slice(0, 64), name = String(b.name || "").trim().slice(0, 40), quiz = b.quiz || "docker";
+      if (!/^[a-z0-9-]{8,64}$/i.test(id) || !name || !QUIZZES.has(quiz)) return json(res, 400, { error: "quiz, id and name required" });
       await store.upsert({
-        id, name, points: int(b.points, 0, MAX_POINTS), correct: int(b.correct, 0, 20), answered: int(b.answered, 0, 20),
+        id: rowId(quiz, id), quiz, name, points: int(b.points, 0, MAX_POINTS), correct: int(b.correct, 0, 20), answered: int(b.answered, 0, 20),
         best: int(b.best, 0, 20), started: b.started ? int(b.started, 0, 9e15) : null, finished: b.finished ? int(b.finished, 0, 9e15) : null, updated: Date.now(),
       });
       return json(res, 200, { ok: true });
     }
-    if (url.pathname === "/api/leaderboard" && req.method === "GET") return json(res, 200, ranked(await store.all()));
+    const quiz = url.searchParams.get("quiz") || "docker";
+    if (url.pathname.startsWith("/api/leaderboard") && !QUIZZES.has(quiz)) return json(res, 404, { error: "unknown quiz" });
+    if (url.pathname === "/api/leaderboard" && req.method === "GET")
+      return json(res, 200, ranked(await store.all(quiz)).map(r => ({ ...r, id: r.id.replace(/^[a-z]+:/, "") })));
     if (url.pathname === "/api/leaderboard" && req.method === "DELETE") {
       if (!ADMIN_KEY || url.searchParams.get("key") !== ADMIN_KEY) return json(res, 403, { error: "wrong key" });
-      await store.clear(); return json(res, 200, { ok: true });
+      await store.clear(quiz); return json(res, 200, { ok: true });
     }
-    let p = url.pathname === "/" ? "/index.html" : url.pathname === "/leaderboard" ? "/leaderboard.html" : url.pathname;
+    const path0 = url.pathname.replace(/\/+$/, "") || "/";
+    let p = path0 === "/" || path0 === "/platform" ? "/index.html" : path0 === "/leaderboard" ? "/leaderboard.html" : path0;
     if (!PUBLIC.has(p)) { res.writeHead(404); return res.end("Not found"); }
     res.writeHead(200, { "Content-Type": TYPES[path.extname(p)] || "application/octet-stream" });
     fs.createReadStream(path.join(ROOT, p)).pipe(res);

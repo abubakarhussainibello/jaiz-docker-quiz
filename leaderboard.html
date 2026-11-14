@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Docker Quiz Leaderboard · QoreBox</title>
-<link rel="icon" href="logo.png">
+<link rel="icon" href="/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -20,6 +20,9 @@ body::before { content:""; position:fixed; inset:0; z-index:-2;
 .bar img { height:26px; filter:brightness(0) invert(1); }
 .bar .sep { width:1px; height:24px; background:#ffffff2e; }
 .bar b { display:block; font:800 15px var(--head); } .bar small { color:#9FB9E8; font-size:12px; }
+.tabs { display:flex; gap:6px; margin-left:10px; }
+.tabs a { padding:7px 14px; border-radius:99px; font:700 13px var(--sans); color:#9FB9E8; text-decoration:none; border:1px solid #ffffff1f; }
+.tabs a.on { background:#0573FF; color:#fff; border-color:#0573FF; }
 .live { margin-left:auto; display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:99px; background:#ffffff10; border:1px solid #ffffff1f; font:700 13px var(--sans); color:#DCE7FF; }
 .live i { width:8px; height:8px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 4px #12B57433; animation:pulse 1.6s infinite; }
 .live.off i { background:#E5484D; box-shadow:0 0 0 4px #E5484D33; animation:none; }
@@ -55,16 +58,22 @@ footer { text-align:center; color:#8FA8D8; font-size:12.5px; margin-top:26px; }
 </head>
 <body>
 <div class="app">
-  <div class="bar"><img src="logo.png" alt="QoreBox"><span class="sep"></span><div><b>Docker Quiz</b><small>Jaiz Microservices Training</small></div><span class="live" id="live"><i></i><span>Live</span></span></div>
+  <div class="bar"><img src="/logo.png" alt="QoreBox"><span class="sep"></span><div><b id="qtitle">Docker Quiz</b><small>Jaiz Microservices Training</small></div><nav class="tabs"><a href="/leaderboard?quiz=docker" data-q="docker">Docker</a><a href="/leaderboard?quiz=platform" data-q="platform">Platform</a></nav><span class="live" id="live"><i></i><span>Live</span></span></div>
   <h1>Class <span>leaderboard</span></h1>
   <p class="sub" id="sub">Waiting for players…</p>
   <section class="podium" id="podium"></section>
   <section class="list" id="list"></section>
-  <div class="admin" id="admin" hidden><button id="reset">Clear all scores</button></div>
+  <div class="admin" id="admin" hidden><button id="reset">Clear all scores for this quiz</button></div>
   <footer>Updates every few seconds · Jaiz Microservices Training · QoreBox</footer>
 </div>
 <script>
 const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const QUIZ = params.get("quiz") === "platform" ? "platform" : "docker";
+const NAMES = { docker: "Docker Quiz", platform: "Platform Quiz" };
+document.title = `${NAMES[QUIZ]} Leaderboard · QoreBox`;
+$("#qtitle").textContent = NAMES[QUIZ];
+document.querySelectorAll(".tabs a").forEach(a => { a.classList.toggle("on", a.dataset.q === QUIZ); if (params.get("key")) a.href += "&key=" + encodeURIComponent(params.get("key")); });
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = ms => { if (!ms) return ""; const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`; };
 const status = r => r.finished ? `<span class="tag done">Done</span>` : `<span class="tag play">Q ${Math.min(20, r.answered + 1)}/20</span>`;
@@ -84,16 +93,16 @@ function render(rows) {
   last = Object.fromEntries(rows.map(r => [r.id, r.pos]));
 }
 function tick() {
-  fetch("/api/leaderboard", { cache: "no-store" }).then(r => r.json()).then(rows => { render(rows); $("#live").classList.remove("off"); })
+  fetch(`/api/leaderboard?quiz=${QUIZ}`, { cache: "no-store" }).then(r => r.json()).then(rows => { render(rows); $("#live").classList.remove("off"); })
     .catch(() => $("#live").classList.add("off"));
 }
 tick(); setInterval(tick, 3000);
 
 // Trainer only: open /leaderboard?key=YOUR_ADMIN_KEY to get a "clear" button.
-const key = new URLSearchParams(location.search).get("key");
+const key = params.get("key");
 if (key) { $("#admin").hidden = false;
-  $("#reset").onclick = () => { if (!confirm("Clear every score on the leaderboard?")) return;
-    fetch("/api/leaderboard?key=" + encodeURIComponent(key), { method: "DELETE" }).then(r => { if (!r.ok) alert("Wrong key."); tick(); }); }; }
+  $("#reset").onclick = () => { if (!confirm(`Clear every ${NAMES[QUIZ]} score?`)) return;
+    fetch(`/api/leaderboard?quiz=${QUIZ}&key=` + encodeURIComponent(key), { method: "DELETE" }).then(r => { if (!r.ok) alert("Wrong key."); tick(); }); }; }
 </script>
 </body>
 </html>
