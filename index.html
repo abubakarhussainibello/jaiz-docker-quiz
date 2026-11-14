@@ -91,6 +91,13 @@ code { font:600 .88em var(--mono); background:#0573FF1a; color:#0B3D91; padding:
 .qhead { display:flex; align-items:center; gap:12px; padding:16px 26px; background:linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 70%, #04204A)); color:#fff; }
 .qhead .lv { font:800 12px var(--sans); letter-spacing:.12em; text-transform:uppercase; }
 .qhead .num { margin-left:auto; font:700 13px var(--sans); opacity:.9; }
+.timer { display:inline-flex; align-items:center; gap:6px; font:800 14px var(--mono); padding:4px 12px; border-radius:99px; background:#ffffff26; }
+.timer svg { width:15px; height:15px; }
+.timer.warn { background:#FFC94D; color:#04204A; animation:pulse 1s infinite; }
+.timer.out { background:var(--bad); color:#fff; animation:none; }
+.tbar { height:6px; background:var(--tint); }
+.tbar i { display:block; height:100%; width:100%; background:var(--c); transition:width .25s linear; }
+.tbar.warn i { background:var(--gold); } .tbar.out i { background:var(--bad); }
 .qhead .worth { font:800 12px var(--sans); padding:4px 10px; border-radius:99px; background:#ffffff26; }
 .qbody { padding:26px clamp(18px,3vw,34px) 28px; }
 .q { font:800 clamp(22px,2.6vw,29px)/1.28 var(--head); letter-spacing:-.01em; margin:0 0 16px; color:var(--ink); }
@@ -199,6 +206,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;"
 const right = q => +atob(q.k) - 7;
 const WORTH = [100, 200, 300, 400];
 const ICON = {
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>',
   fire: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s5 4.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3 1-6 1-8.5z"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
@@ -209,7 +217,7 @@ const ICON = {
   redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
 };
 let S = load() || fresh("");
-function fresh(name) { return { name, i: 0, picks: [], pts: [], streak: 0, best: 0, started: null, finished: null, order: null }; }
+function fresh(name) { return { name, i: 0, picks: [], pts: [], streak: 0, best: 0, started: null, finished: null, order: null, deadlines: {} }; }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { } }
 // ---------- shared leaderboard ----------
 const PID = (() => { const k = "qorebox.dockerquiz.pid"; let v; try { v = localStorage.getItem(k); } catch { }
@@ -247,11 +255,11 @@ function landing() {
       <p class="lead">${QZ.lead}</p>
       <div class="facts"><div class="fact"><b>20</b><small>questions</small></div><div class="fact"><b>4</b><small>levels</small></div><div class="fact"><b>${QZ.minutes}</b><small>minutes</small></div><div class="fact"><b>${maxPoints}</b><small>points to win</small></div></div>
       <div class="namebox"><input id="name" maxlength="40" placeholder="Type your full name" value="${esc(S.name || "")}" autocomplete="name"><button class="go" id="go" ${S.name ? "" : "disabled"}>Start ${ICON.arrow}</button></div>
-      <div class="hint">Your name goes on your certificate. Your score appears live on the class leaderboard. Your progress is saved if you refresh.</div>
+      <div class="hint">Your name goes on your certificate. ${Q.some(q => q.t) ? "Every question has a timer: harder ones get more time. " : ""}Your score appears live on the class leaderboard. Your progress is saved if you refresh.</div>
     </div>
     <div>
       ${boxes}
-      <div class="path">${LEVELS.map((L, i) => `<div class="stop" style="--c:${L.c}"><span class="n">${i + 1}</span><div><b>${L.short}</b><small>5 questions · ${WORTH[i]} pts each</small></div><span class="diff">${[0, 1, 2, 3].map(d => `<i class="${d <= i ? "on" : ""}"></i>`).join("")}</span></div>`).join("")}</div>
+      <div class="path">${LEVELS.map((L, i) => `<div class="stop" style="--c:${L.c}"><span class="n">${i + 1}</span><div><b>${L.short}</b><small>5 questions · ${WORTH[i]} pts${Q.some(q => q.t) ? (() => { const ts = Q.filter(q => q.l === i).map(q => q.t); const lo = Math.min(...ts), hi = Math.max(...ts); return ` · ${lo === hi ? lo : lo + "–" + hi} s each`; })() : ""}</small></div><span class="diff">${[0, 1, 2, 3].map(d => `<i class="${d <= i ? "on" : ""}"></i>`).join("")}</span></div>`).join("")}</div>
     </div></section>`;
   const inp = $("#name"), go = $("#go");
   inp.oninput = () => { go.disabled = !inp.value.trim(); };
@@ -274,7 +282,8 @@ function question() {
   const q = Q[S.i], L = LEVELS[q.l];
   $("#app").innerHTML = `<section class="play">${rail(S.i)}
     <article class="qcard" style="--c:${L.c}">
-      <div class="qhead"><span class="lv">${L.name}</span><span class="worth">${WORTH[q.l]} pts</span><span class="num">Question ${S.i + 1} / ${Q.length}</span></div>
+      <div class="qhead"><span class="lv">${L.name}</span><span class="worth">${WORTH[q.l]} pts</span>${q.t ? `<span class="timer" id="tm">${ICON.clock}<b id="tmv">${q.t}</b>s</span>` : ""}<span class="num">Question ${S.i + 1} / ${Q.length}</span></div>
+      ${q.t ? `<div class="tbar" id="tb"><i></i></div>` : ""}
       <div class="qbody">
         <p class="q">${q.q}</p>
         ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ""}
@@ -283,10 +292,41 @@ function question() {
         <div class="foot" id="foot" hidden><span class="tip">Press <b>Enter</b> to continue</span><button class="next" id="next">${S.i + 1 === Q.length ? "See my certificate" : "Next question"} ${ICON.arrow}</button></div>
       </div></article></section>`;
   document.querySelectorAll(".opt").forEach(b => b.onclick = e => pick(+b.dataset.k, e));
-  if (S.picks[S.i] !== undefined) reveal(S.picks[S.i], false);
+  if (S.picks[S.i] !== undefined) { reveal(S.picks[S.i], false); showTimer(0, q.t); }
+  else if (q.t) startTimer(q);
+}
+// ---------- per-question timer: harder questions get more time; running out counts as wrong ----------
+let TIMER = null;
+function stopTimer() { clearInterval(TIMER); TIMER = null; }
+function showTimer(left, total) {
+  const tm = $("#tm"), tb = $("#tb"); if (!tm || !tb) return;
+  const secs = Math.max(0, Math.ceil(left / 1000));
+  $("#tmv").textContent = secs;
+  tb.firstChild.style.width = `${Math.max(0, Math.min(100, left / (total * 10)))}%`;
+  const cls = left <= 0 ? "out" : secs <= 10 ? "warn" : "";
+  tm.className = `timer ${cls}`; tb.className = `tbar ${cls}`;
+}
+function startTimer(q) {
+  stopTimer();
+  S.deadlines = S.deadlines || {};
+  if (!S.deadlines[S.i]) { S.deadlines[S.i] = Date.now() + q.t * 1000; save(); }  // survives a page refresh
+  const i = S.i, tick = () => {
+    if (S.i !== i || S.picks[i] !== undefined) return stopTimer();
+    const left = S.deadlines[i] - Date.now();
+    showTimer(left, q.t);
+    if (left <= 0) { stopTimer(); timeUp(); }
+  };
+  tick(); TIMER = setInterval(tick, 250);
+}
+function timeUp() {
+  if (S.picks[S.i] !== undefined) return;
+  S.picks[S.i] = -1; S.pts[S.i] = 0; S.streak = 0;   // -1 = no answer in time
+  save(); sync();
+  reveal(-1, true);
 }
 function pick(k, e) {
   if (S.picks[S.i] !== undefined) return;
+  stopTimer();
   const q = Q[S.i], ok = k === right(q);
   S.picks[S.i] = k;
   if (ok) { S.streak++; S.best = Math.max(S.best, S.streak); S.pts[S.i] = WORTH[q.l] + (S.streak >= 3 ? 50 : 0); }
@@ -300,7 +340,7 @@ function reveal(k, fresh, e) {
     if (i === r) { b.classList.add("right"); b.insertAdjacentHTML("beforeend", `<span class="mk">${ICON.check}</span>`); }
     else if (i === k) { b.classList.add("wrong"); b.insertAdjacentHTML("beforeend", `<span class="mk">${ICON.x}</span>`); }
     else b.classList.add("dim"); });
-  $("#fb").innerHTML = `<div class="why ${ok ? "" : "no"}"><span class="ic">${ok ? ICON.check : ICON.x}</span><div><h4>${ok ? (S.streak >= 3 && fresh ? `Correct! ${S.streak} in a row` : "Correct!") : "Not quite"}</h4><p>${q.w}</p></div></div>`;
+  $("#fb").innerHTML = `<div class="why ${ok ? "" : "no"}"><span class="ic">${ok ? ICON.check : ICON.x}</span><div><h4>${ok ? (S.streak >= 3 && fresh ? `Correct! ${S.streak} in a row` : "Correct!") : k === -1 ? "Time’s up" : "Not quite"}</h4><p>${q.w}</p></div></div>`;
   $("#foot").hidden = false;
   $("#next").onclick = next;
   if (fresh) {
